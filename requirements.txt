@@ -1,0 +1,5 @@
+streamlit
+joblib
+scikit-learn==1.5.1
+numpy
+fpdf==1.7.2
