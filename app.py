@@ -1,48 +1,65 @@
-# Import necessary libraries
 import streamlit as st
-import pickle
 import numpy as np
+from PIL import Image
+from tensorflow.keras.models import load_model
+import tensorflow as tf
+import os
+import gdown  # Used to download from Google Drive
 
-# Define the CropRecommendationModel class
-class CropRecommendationModel:
-    def __init__(self, model, crop_names):
-        self.model = model
-        self.crop_names = crop_names
-    
-    def predict(self, X):
-        y_pred = self.model.predict(X)
-        predicted_crops = []
-        for row in y_pred:
-            index = np.argmax(row)
-            predicted_crops.append(self.crop_names[index] if row[index] == 1 else "None")
-        return predicted_crops
+# Google Drive file ID for the updated model
+FILE_ID = "1MYgSZdZJOe-JzRjxyFD_B31p7crIA20K"
+MODEL_PATH = "my1_boat_model.h5"
+
+# Download the model if it doesn't exist
+if not os.path.exists(MODEL_PATH):
+    gdown.download(f"https://drive.google.com/uc?id={FILE_ID}", MODEL_PATH, quiet=False)
 
 # Load the model
-import pickle
-with open("CropRecommendationModel.pkl", "rb") as file:
-    model = pickle.load(file)
+model = load_model(MODEL_PATH)
 
-# Set up the page title and color
-st.title("AI-Powered Crop Recommendation System")
-st.markdown(
-    "<style>body{ background-color: #e0ffe0; }</style>", 
-    unsafe_allow_html=True
-)
+# Define class names
+class_names = [
+    'Lanciafino10m', 'Ambulanza', 'Lanciafino10mBianca', 'Cacciapesca', 'Caorlina',
+    'Alilaguna', 'Gondola', 'Barchino', 'Motobarca', 'Lanciamaggioredi10mBianca',
+    'MotoscafoACTV', 'Lanciafino10mMarrone', 'Motopontonerettangolare',
+    'Lanciamaggioredi10mMarrone', 'Raccoltarifiuti', 'Topa', 'Mototopo', 'Sandoloaremi',
+    'Patanella', 'Sanpierota', 'Polizia', 'VigilidelFuoco', 'VaporettoACTV', 'water'
+]
 
-# Input fields for the seven features
-N = st.number_input("Nitrogen Content (N)", min_value=0.0, max_value=200.0)
-P = st.number_input("Phosphorous Content (P)", min_value=0.0, max_value=200.0)
-K = st.number_input("Potassium Content (K)", min_value=0.0, max_value=200.0)
-temperature = st.number_input("Temperature (°C)", min_value=0.0, max_value=100.0)
-humidity = st.number_input("Humidity (%)", min_value=0.0, max_value=100.0)
-ph = st.number_input("pH Level", min_value=4.0, max_value=14.0)
-rainfall = st.number_input("Rainfall (mm)", min_value=50.0, max_value=1500.0)
+# App title
+st.title("AIBOT Classifier Model")
 
-# Submit button to make predictions
-if st.button("Predict"):
-    # Prepare input features for the model
-    input_features = [[N, P, K, temperature, humidity, ph, rainfall]]
-    prediction = model.predict(input_features)
-    
-    # Display the result
-    st.write(f"Recommended Crop: {prediction[0]}")
+# Upload image
+uploaded_file = st.file_uploader("Upload a boat image", type=["jpg", "jpeg", "png"])
+
+if uploaded_file is not None:
+    image = Image.open(uploaded_file).convert("RGB")
+    st.image(image, caption="Uploaded Image", use_column_width=True)
+
+    # Preprocess image
+    image = image.resize((180, 180))
+    image_array = np.array(image) / 255.0
+    image_array = np.expand_dims(image_array, axis=0)
+
+    # Predict
+    prediction = model.predict(image_array)[0]
+    top_index = np.argmax(prediction)
+    predicted_class = class_names[top_index]
+    confidence = float(prediction[top_index]) * 100
+
+    # Display result
+    st.markdown(f"### Prediction: **{predicted_class}**")
+    st.markdown(f"**Confidence:** {confidence:.2f}%")
+
+    # Optional: Display top 3 predictions
+    st.markdown("#### Top 3 Predictions:")
+    top_3_indices = prediction.argsort()[-3:][::-1]
+    for idx in top_3_indices:
+        st.write(f"{class_names[idx]}: {prediction[idx]*100:.2f}%")
+
+    if st.button("Like"):
+        st.success("Thanks for your support!")
+
+# Footer
+st.markdown("---")
+st.markdown("This tool is for educational purposes only and not a substitute for professional decision-making.")
