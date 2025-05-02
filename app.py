@@ -27,7 +27,7 @@ class_names = [
 ]
 
 # App title
-st.title("AIBOT Classifier Model")
+st.title("AI BOAT Classifier Model")
 
 # Upload image
 uploaded_file = st.file_uploader("Upload a boat image", type=["jpg", "jpeg", "png"])
